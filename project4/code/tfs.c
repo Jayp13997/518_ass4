@@ -27,6 +27,9 @@
 #include "tfs.h"
 
 char diskfile_path[PATH_MAX];
+#define inode_block_size 1
+#define data_block_size 2
+struct superblock* sb;
 
 // Declare your in-memory data structures here
 
@@ -36,12 +39,24 @@ char diskfile_path[PATH_MAX];
 int get_avail_ino() {
 
 	// Step 1: Read inode bitmap from disk
+
+	bitmap_t inode_bitmap = malloc(BLOCK_SIZE);
+	bio_read(inode_block_size, inode_bitmap);
 	
 	// Step 2: Traverse inode bitmap to find an available slot
-
 	// Step 3: Update inode bitmap and write to disk 
 
-	return 0;
+	for(int i = 0; i < sb->max_inum; i++){
+		int occupied = get_bitmap(inode_bitmap, i);
+
+		if(occupied == 0){
+			set_bitmap(inode_bitmap, i);
+			bio_write(inode_block_size, inode_bitmap);
+			free(inode_bitmap);
+			return i;
+		}
+	}
+	return -1;
 }
 
 /* 
