@@ -40,19 +40,19 @@ int get_avail_ino() {
 
 	// Step 1: Read inode bitmap from disk
 
-	bitmap_t inode_bitmap = malloc(BLOCK_SIZE);
-	bio_read(inode_block_size, inode_bitmap);
+	bitmap_t inode_bm = malloc(BLOCK_SIZE);
+	bio_read(inode_block_size, inode_bm);
 	
 	// Step 2: Traverse inode bitmap to find an available slot
 	// Step 3: Update inode bitmap and write to disk 
 
 	for(int i = 0; i < sb->max_inum; i++){
-		int occupied = get_bitmap(inode_bitmap, i);
+		int occupied = get_bitmap(inode_bm, i);
 
 		if(occupied == 0){
-			set_bitmap(inode_bitmap, i);
-			bio_write(inode_block_size, inode_bitmap);
-			free(inode_bitmap);
+			set_bitmap(inode_bm, i);
+			bio_write(inode_block_size, inode_bm);
+			free(inode_bm);
 			return i;
 		}
 	}
@@ -65,12 +65,24 @@ int get_avail_ino() {
 int get_avail_blkno() {
 
 	// Step 1: Read data block bitmap from disk
+
+	bitmap_t data_bm = malloc(BLOCK_SIZE);
+	bio_read(inode_block_size, data_bm);
 	
 	// Step 2: Traverse data block bitmap to find an available slot
-
 	// Step 3: Update data block bitmap and write to disk 
 
-	return 0;
+	for(int i = 0; i < sb->max_dnum; i++){
+		int occupied = get_bitmap(data_bm, i);
+
+		if(occupied == 0){
+			set_bitmap(data_bm, i);
+			bio_write(data_block_size, data_bm);
+			free(data_bm);
+			return i;
+		}
+	}
+	return -1;
 }
 
 /* 
