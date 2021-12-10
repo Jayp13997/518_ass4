@@ -90,22 +90,55 @@ int get_avail_blkno() {
  */
 int readi(uint16_t ino, struct inode *inode) {
 
-  // Step 1: Get the inode's on-disk block number
+	// Step 1: Get the inode's on-disk block number
+	int inodes_per_block = BLOCK_SIZE/sizeof(struct inode);
+	int blknum = sb->i_start_blk+ino/inodes_per_block;
 
-  // Step 2: Get offset of the inode in the inode on-disk block
+	void* inode_block = malloc(BLOCK_SIZE);
+	int read_status = bio_read(blknum, inode_block);
 
-  // Step 3: Read the block from disk and then copy into inode structure
+	if(read_status < 0){
+		printf("Error reading from disc\n");
+		return -1;
+	}
 
+	// Step 2: Get offset of the inode in the inode on-disk block
+	int offset = (ino%inodes_per_block)*sizeof(struct inode);
+	
+	// Step 3: Read the block from disk and then copy into inode structure
+	struct inode* inode_ptr = (struct inode*) malloc(seizeof(inode));
+	memcpy(inode_ptr, inode_block + offset, sizeof(struct inode));
+	*inode = *inode_ptr;
+
+	free(inode_block);
 	return 0;
 }
 
 int writei(uint16_t ino, struct inode *inode) {
 
 	// Step 1: Get the block number where this inode resides on disk
+	int inodes_per_block = BLOCK_SIZE/sizeof(struct inode);
+	int blknum = sb->i_start_blk+ino/inodes_per_block;
+
+	char* inode_block = malloc(BLOCK_SIZE);
+	int read_status = bio_read(blknum, inode_block);
+
+	if(read_status < 0){
+		printf("Error reading from disc\n");
+		return -1;
+	}
 	
 	// Step 2: Get the offset in the block where this inode resides on disk
+	int offset = (ino%inodes_per_block)*sizeof(struct inode);
+	struct inode * temp = (struct inode*)(inode_block + offset);
+	*temp = *inode;
 
 	// Step 3: Write inode to disk 
+	int write_status = bio_write(blknum, inode_block);
+	if(write_status < 0){
+		printf("Error writing to disc\n");
+		return -1;
+	}
 
 	return 0;
 }
