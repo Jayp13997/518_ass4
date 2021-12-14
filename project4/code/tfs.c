@@ -246,8 +246,6 @@ int dir_remove(struct inode dir_inode, const char *fname, size_t name_len) {
 			for(int j = 0; j < BLOCK_SIZE / sizeof(struct dirent); j++){
 				if(current_dir_entry->valid && strcmp(current_dir_entry->name, fname) == 0 && sizeof(current_dir_entry->name) == name_len){
 					// Step 3: If exist, then remove it from dir_inode's data block and write to disk
-					struct inode * updated_inode = (struct inode *) malloc(sizeof(struct inode));
-					*updated_inode = dir_inode;
 					dir_inode.size = dir_inode.size - sizeof(struct dirent);
 					dir_inode.vstat.st_size = dir_inode.vstat.st_size - sizeof(struct dirent);
 					dir_inode.valid = 0;
@@ -282,7 +280,7 @@ int get_node_by_path(const char *path, uint16_t ino, struct inode *inode) {
 	struct dirent * current_dir = (struct dirent *) malloc(sizeof(struct dirent));
 	current_dir->ino = 0;
 
-	if(strcmp(path, token) == 0){
+	if(strcmp(path, s) == 0){
 		token = NULL;
 	}
 
