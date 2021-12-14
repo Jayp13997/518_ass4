@@ -173,7 +173,7 @@ int dir_find(uint16_t ino, const char *fname, size_t name_len, struct dirent *di
 		int read_status = bio_read(sb->d_start_blk+dir_data_block[i], curr_data_block);
 
 		if(read_status < 0){
-			printf("There was na error reading from disc\n");
+			printf("There was an error reading from disc\n");
 			return -1;
 		}
 
@@ -198,8 +198,26 @@ int dir_find(uint16_t ino, const char *fname, size_t name_len, struct dirent *di
 int dir_add(struct inode dir_inode, uint16_t f_ino, const char *fname, size_t name_len) {
 
 	// Step 1: Read dir_inode's data block and check each directory entry of dir_inode
-	
+	int * current_dir_data_block = dir_inode.direct_ptr;
+	struct dirent* current_dir_entry = (struct dirent *) malloc(sizeof(struct dirent));
+
 	// Step 2: Check if fname (directory name) is already used in other entries
+	for(int i = 0; i < sizeof(current_dir_data_block); i++){
+		if(current_dir_data_block[i] == 0){
+			continue;
+		}
+		else{
+			bio_read(current_dir_data_block[i], current_dir_entry);
+			for(int j = 0; j < BLOCK_SIZE / sizeof(struct dirent); j++){
+				if(current_dir_entry->valid && strcmp(current_dir_entry->name, fname) == 0 && sizeof(current_dir_entry->name) == name_len){
+					return -1;
+				}
+				else{
+					current_dir_entry ++;
+				}
+			}
+		}
+	}
 
 	// Step 3: Add directory entry in dir_inode's data block and write to disk
 
@@ -215,12 +233,36 @@ int dir_add(struct inode dir_inode, uint16_t f_ino, const char *fname, size_t na
 int dir_remove(struct inode dir_inode, const char *fname, size_t name_len) {
 
 	// Step 1: Read dir_inode's data block and checks each directory entry of dir_inode
-	
+	int * current_dir_data_block = dir_inode.direct_ptr;
+	struct dirent* current_dir_entry = (struct dirent *) malloc(sizeof(struct dirent));
+
 	// Step 2: Check if fname exist
+	for(int i = 0; i < sizeof(current_dir_data_block); i++){
+		if(current_dir_data_block[i] == 0){
+			continue;
+		}
+		else{
+			bio_read(current_dir_data_block[i], current_dir_entry);
+			for(int j = 0; j < BLOCK_SIZE / sizeof(struct dirent); j++){
+				if(current_dir_entry->valid && strcmp(current_dir_entry->name, fname) == 0 && sizeof(current_dir_entry->name) == name_len){
+					// Step 3: If exist, then remove it from dir_inode's data block and write to disk
+					struct inode * updated_inode = (struct inode *) malloc(sizeof(struct inode));
+					*updated_inode = dir_inode;
+					dir_inode.size = dir_inode.size - sizeof(struct dirent);
+					dir_inode.vstat.st_size = dir_inode.vstat.st_size - sizeof(struct dirent);
+					dir_inode.valid = 0;
+					writei(dir_inode.ino, &dir_inode);
+					bio_write(dir_inode.direct_ptr[i], (const void * ) current_dir_data_block);
+					return 0;
+				}
+				else{
+					current_dir_entry ++;
+				}
+			}
+		}
+	}
 
-	// Step 3: If exist, then remove it from dir_inode's data block and write to disk
-
-	return 0;
+	return -1;
 }
 
 /* 
@@ -231,6 +273,30 @@ int get_node_by_path(const char *path, uint16_t ino, struct inode *inode) {
 	// Step 1: Resolve the path name, walk through path, and finally, find its inode.
 	// Note: You could either implement it in a iterative way or recursive way
 
+	// "/"
+	const char s[2] = "/";
+	char * token;
+
+	token = strtok(path, s);
+
+	struct dirent * current_dir = (struct dirent *) malloc(sizeof(struct dirent));
+	current_dir->ino = 0;
+
+	if(strcmp(path, token) == 0){
+		token = NULL;
+	}
+
+	while(token != NULL){
+		if(dir_find(current_dir->ino, token, strlen(token), current_dir) == -1){
+			return -1;
+		}
+		else{
+			token = strtok(NULL, path);
+		}
+	}
+
+	readi(current_dir->ino, inode);
+
 	return 0;
 }
 
@@ -240,7 +306,7 @@ int get_node_by_path(const char *path, uint16_t ino, struct inode *inode) {
 int tfs_mkfs() {
 
 	// Call dev_init() to initialize (Create) Diskfile
-
+	
 	// write superblock information
 
 	// initialize inode bitmap
@@ -303,9 +369,9 @@ static int tfs_getattr(const char *path, struct stat *stbuf) {
 
 	// Step 2: fill attribute of file into stbuf from inode
 
-		stbuf->st_mode   = S_IFDIR | 0755;
-		stbuf->st_nlink  = 2;
-		time(&stbuf->st_mtime);
+		// stbuf->st_mode   = S_IFDIR | 0755;
+		// stbuf->st_nlink  = 2;
+		// time(&stbuf->st_mtime);
 
 	return 0;
 }
