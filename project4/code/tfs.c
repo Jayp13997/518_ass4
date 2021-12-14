@@ -277,7 +277,7 @@ int get_node_by_path(const char *path, uint16_t ino, struct inode *inode) {
 	const char s[2] = "/";
 	char * token;
 
-	token = strtok(path, s);
+	token = strtok((char *)path, s);
 
 	struct dirent * current_dir = (struct dirent *) malloc(sizeof(struct dirent));
 	current_dir->ino = 0;
